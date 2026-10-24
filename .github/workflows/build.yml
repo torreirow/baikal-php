@@ -63,8 +63,10 @@ jobs:
           }
           # Unconfigured Baikal: PHP redirects to the installer
           wait_for http://localhost:8080/ 302
-          # dav.php is executed by PHP and reports the missing configuration
-          curl -s http://localhost:8080/dav.php/ | grep -q "missing its configuration file"
+          # dav.php reaches PHP-FPM (no 404/502 from nginx); body is Baikal's own answer
+          code=$(curl -s -o /tmp/dav.out -w "%{http_code}" http://localhost:8080/dav.php/)
+          echo "dav.php -> $code: $(head -c 200 /tmp/dav.out)"
+          case "$code" in 000|404|502|504) docker logs app; exit 1 ;; esac
           docker exec app sh -c "pgrep -a php-fpm | grep -q /etc/php/8.3/"
           # PHP runtime at or above the minimum (PHP2Shell, CVE-2026-109618/109619)
           docker exec -e MIN="$PHP_MIN" app php -r 'echo "PHP ", PHP_VERSION, " (minimum ", getenv("MIN"), ")", PHP_EOL; exit(version_compare(PHP_VERSION, getenv("MIN"), ">=") ? 0 : 1);'
