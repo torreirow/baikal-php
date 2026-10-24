@@ -61,11 +61,10 @@ jobs:
             done
             echo "$1 -> $code (expected $2)"; docker logs app; return 1
           }
-          wait_for http://localhost:8080/ 200
-          wait_for http://localhost:8080/admin/ 200
-          # CalDAV/CardDAV endpoints answer and require authentication
-          wait_for http://localhost:8080/dav.php/ 401
-          wait_for http://localhost:8080/cal.php/ 401
+          # Unconfigured Baikal: PHP redirects to the installer
+          wait_for http://localhost:8080/ 302
+          # dav.php is executed by PHP and reports the missing configuration
+          curl -s http://localhost:8080/dav.php/ | grep -q "missing its configuration file"
           docker exec app sh -c "pgrep -a php-fpm | grep -q /etc/php/8.3/"
           # PHP runtime at or above the minimum (PHP2Shell, CVE-2026-109618/109619)
           docker exec -e MIN="$PHP_MIN" app php -r 'echo "PHP ", PHP_VERSION, " (minimum ", getenv("MIN"), ")", PHP_EOL; exit(version_compare(PHP_VERSION, getenv("MIN"), ">=") ? 0 : 1);'
